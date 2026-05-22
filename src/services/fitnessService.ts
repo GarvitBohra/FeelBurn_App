@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db, isFirebaseConfigured, auth, mockAuth } from '../config/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export interface UserProfile {
   displayName: string;
@@ -221,5 +221,50 @@ export const FitnessService = {
     }
 
     return Promise.all(promises);
+  },
+
+  /**
+   * Delete the active user account permanently (Google Play Store compliance requirement)
+   */
+  async deleteAccount(): Promise<void> {
+    const uid = this.getUid();
+    if (!uid) return;
+
+    // 1. Purge all local AsyncStorage cache entries
+    try {
+      await AsyncStorage.removeItem(`@feelburn_profile_${uid}`);
+      
+      // Clear history logs of the last 30 days locally
+      const today = new Date();
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        await AsyncStorage.removeItem(`@feelburn_log_${uid}_${dateStr}`);
+      }
+      console.log("AsyncStorage cached profile and 30-day logs cleared successfully!");
+    } catch (e) {
+      console.error("Error clearing AsyncStorage records during account deletion:", e);
+    }
+
+    // 2. Delete user profile record in Cloud Firestore
+    if (isFirebaseConfigured && db && isFirestoreHealthy) {
+      try {
+        const docRef = doc(db, "users", uid);
+        await deleteDoc(docRef);
+        console.log("Firestore User profile document deleted!");
+      } catch (error) {
+        console.error("Error deleting user profile from Firestore:", error);
+      }
+    }
+
+    // 3. Delete Firebase Auth / Mock session
+    if (isFirebaseConfigured && auth && auth.currentUser) {
+      await auth.currentUser.delete();
+      console.log("Firebase Auth user deleted successfully!");
+    } else {
+      await mockAuth.logout();
+      console.log("Mock session cleared successfully!");
+    }
   }
 };

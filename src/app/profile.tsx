@@ -105,6 +105,48 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "⚠️ Permanently Delete Account?",
+      "Are you absolutely sure? This will permanently wipe your profile records, daily logs, steps, calorie logs, and active session history from our database and local caches. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete My Data", 
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Confirm Irreversible Action",
+              "To confirm, click 'Confirm Permanent Deletion' below. Your session will end immediately and all your data will be scrubbed.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Confirm Permanent Deletion",
+                  style: "destructive",
+                  onPress: async () => {
+                    setLoading(true);
+                    try {
+                      await FitnessService.deleteAccount();
+                      Alert.alert("Account Deleted", "Your account and data have been successfully deleted.");
+                    } catch (err: any) {
+                      console.error("Error during account deletion:", err);
+                      Alert.alert(
+                        "Deletion Error",
+                        err.message || "Could not delete account. If you signed in a long time ago, please log out, log in again, and retry."
+                      );
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
+  };
+
   if (loading && !profile) {
     return (
       <View style={styles.loadingContainer}>
@@ -233,14 +275,35 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </GlassCard>
 
-        {/* 4. Logout Section */}
-        <TouchableOpacity 
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-        >
-          <LogOut size={16} color="#FF3B30" />
-          <Text style={styles.logoutBtnText}>LOG OUT OF SESSION</Text>
-        </TouchableOpacity>
+        {/* 4. Danger Zone (Google Play Compliance) */}
+        <GlassCard style={[styles.card, styles.dangerCard]}>
+          <View style={styles.rowHeader}>
+            <LogOut size={20} color="#FF3B30" />
+            <Text style={[styles.sectionTitleText, { color: '#FF3B30' }]}>DANGER ZONE</Text>
+          </View>
+          
+          <Text style={styles.sectionDescText}>
+            Wipe all personal targets, calorie tallies, and active training history permanently.
+          </Text>
+
+          <View style={styles.dangerActionsRow}>
+            {/* Logout */}
+            <TouchableOpacity 
+              style={styles.actionLogoutBtn}
+              onPress={handleLogout}
+            >
+              <Text style={styles.actionLogoutText}>LOG OUT</Text>
+            </TouchableOpacity>
+
+            {/* Permanent Deletion */}
+            <TouchableOpacity 
+              style={styles.actionDeleteBtn}
+              onPress={handleDeleteAccount}
+            >
+              <Text style={styles.actionDeleteText}>DELETE ACCOUNT</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
       </ScrollView>
     </SafeAreaView>
@@ -329,6 +392,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
+  sectionDescText: {
+    color: BurnColors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: -4,
+  },
   inputWrapper: {
     gap: 6,
   },
@@ -374,22 +443,50 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1.5,
   },
-  logoutBtn: {
+  dangerCard: {
+    backgroundColor: 'rgba(255, 59, 48, 0.02)',
+    borderColor: 'rgba(255, 59, 48, 0.15)',
+    borderWidth: 1.5,
+  },
+  dangerActionsRow: {
     flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+  },
+  actionLogoutBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 48,
-    borderRadius: 14,
-    borderColor: 'rgba(255, 59, 48, 0.2)',
-    borderWidth: 1,
-    backgroundColor: 'rgba(255, 59, 48, 0.04)',
-    gap: 8,
-    marginVertical: 10,
   },
-  logoutBtnText: {
-    color: '#FF3B30',
+  actionLogoutText: {
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
+  },
+  actionDeleteBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 59, 48, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  actionDeleteText: {
+    color: '#FF4D4D',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });
